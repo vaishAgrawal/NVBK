@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Gallery</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f3ece7;
+            color: #333;
+            padding: 20px;
+        }
+        h1 {
+            color: #421b03c1;
+            font-size: 2em;
+        }
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgb(240, 217, 201);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        .photo-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+        .photo-container img {
+            width: 200px;
+            height: 150px;
+            border: 3px solid #d66433df;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+        .photo-container img:hover {
+            transform: scale(1.1);
+        }
+        .photo-container input[type='checkbox'] {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            display: none;
+        }
+        .upload-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8c2a8;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .delete-section {
+            margin-top: 10px;
+        }
+        button {
+            background-color: #7321169d;
+            color: rgb(238, 218, 218);
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #c1583b;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="serviceTitle">Haldi</h1>
+    <p>Bright and vibrant decor to add color and joy to your special rituals! 💛🌿✨</p>
+    <div class="gallery" id="gallery"></div>
+
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="addPhoto()">Add Photo</button>
+    </div>
+
+    <div class="delete-section">
+        <button onclick="toggleDeleteMode()" id="deleteToggle">Enable Delete Mode</button>
+        <button onclick="deleteSelectedPhotos()" id="deleteButton" style="display: none;">Delete Selected Photos</button>
+    </div>
+
+    <script>
+        let deleteMode = false;
+
+        // Get the current service from the page title (or another method)
+        const serviceName = document.getElementById("serviceTitle").textContent.trim();
+        const localStorageKey = `photos_${serviceName.toLowerCase()}`;
+
+        // Load images from localStorage for this specific service
+        document.addEventListener("DOMContentLoaded", loadSavedPhotos);
+
+        function addPhoto() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    savePhoto(e.target.result); // Save to localStorage for this service
+                    displayPhoto(e.target.result); // Display the photo
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
+        function displayPhoto(imageSrc) {
+            const gallery = document.getElementById('gallery');
+            const container = document.createElement('div');
+            container.classList.add('photo-container');
+
+            const img = document.createElement('img');
+            img.src = imageSrc;
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+
+            container.appendChild(checkbox);
+            container.appendChild(img);
+            gallery.appendChild(container);
+        }
+
+        function savePhoto(imageSrc) {
+            let savedPhotos = JSON.parse(localStorage.getItem(localStorageKey)) || [];
+            savedPhotos.push(imageSrc);
+            localStorage.setItem(localStorageKey, JSON.stringify(savedPhotos));
+        }
+
+        function loadSavedPhotos() {
+            let savedPhotos = JSON.parse(localStorage.getItem(localStorageKey)) || [];
+            savedPhotos.forEach(photo => displayPhoto(photo));
+        }
+
+        function toggleDeleteMode() {
+            deleteMode = !deleteMode;
+            const checkboxes = document.querySelectorAll('.photo-container input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.style.display = deleteMode ? 'block' : 'none';
+            });
+            document.getElementById('deleteButton').style.display = deleteMode ? 'inline-block' : 'none';
+            document.getElementById('deleteToggle').textContent = deleteMode ? 'Disable Delete Mode' : 'Enable Delete Mode';
+        }
+
+        function deleteSelectedPhotos() {
+            const gallery = document.getElementById('gallery');
+            const selectedPhotos = document.querySelectorAll('.photo-container input[type="checkbox"]:checked');
+
+            if (selectedPhotos.length === 0) {
+                alert("No photos selected for deletion.");
+                return;
+            }
+
+            if (confirm("Are you sure you want to delete the selected photos?")) {
+                let savedPhotos = JSON.parse(localStorage.getItem(localStorageKey)) || [];
+
+                selectedPhotos.forEach(checkbox => {
+                    const photoSrc = checkbox.nextSibling.src;
+                    savedPhotos = savedPhotos.filter(photo => photo !== photoSrc);
+                    gallery.removeChild(checkbox.parentElement);
+                });
+
+                localStorage.setItem(localStorageKey, JSON.stringify(savedPhotos));
+            }
+        }
+    </script>
+</body>
+</html>
