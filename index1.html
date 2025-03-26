@@ -79,7 +79,7 @@
     </div>
 
     <script>
-        // 🔥 Firebase Configuration (Replace with your own Firebase project credentials)
+        // 🔥 Firebase Configuration (Replace with your Firebase credentials)
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -107,8 +107,10 @@
             }).then(url => {
                 savePhotoURL(url);
                 displayPhoto(url);
+                alert("Image uploaded successfully! ✅");
             }).catch(error => {
                 console.error("Upload failed:", error);
+                alert("Upload failed. Check console for details.");
             });
         }
 
