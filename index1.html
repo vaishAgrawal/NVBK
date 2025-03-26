@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stage</title>
+    <title>Service Gallery</title>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js"></script>
+
     <style>
         body {
             text-align: center;
@@ -11,10 +15,6 @@
             background-color: #f3ece7;
             color: #333;
             padding: 20px;
-        }
-        h1 {
-            color: #421b03c1;
-            font-size: 2em;
         }
         .gallery {
             display: flex;
@@ -42,12 +42,6 @@
         .photo-container img:hover {
             transform: scale(1.1);
         }
-        .photo-container input[type='checkbox'] {
-            position: absolute;
-            top: 5px;
-            left: 5px;
-            display: none;
-        }
         .upload-section {
             margin-top: 20px;
             padding: 20px;
@@ -57,12 +51,9 @@
             max-width: 400px;
             margin: 20px auto;
         }
-        .delete-section {
-            margin-top: 10px;
-        }
         button {
             background-color: #7321169d;
-            color: rgb(238, 218, 218);
+            color: white;
             border: none;
             padding: 10px 20px;
             font-size: 1em;
@@ -77,97 +68,80 @@
     </style>
 </head>
 <body>
-    <h1>Stage</h1>
-    <p>A grand and stunning setup to make every moment picture-perfect! 🎭✨</p>
-    
+    <h1>Service Gallery</h1>
+    <p>Upload and view images from anywhere!</p>
+
     <div class="gallery" id="gallery"></div>
-    
+
     <div class="upload-section">
         <input type="file" id="fileInput" accept="image/*">
-        <button onclick="addPhoto()">Add Photo</button>
-    </div>
-    
-    <div class="delete-section">
-        <button onclick="toggleDeleteMode()" id="deleteToggle">Enable Delete Mode</button>
-        <button onclick="deleteSelectedPhotos()" id="deleteButton" style="display: none;">Delete Selected Photos</button>
+        <button onclick="uploadPhoto()">Upload Photo</button>
     </div>
 
     <script>
-        let deleteMode = false;
+        // 🔥 Firebase Configuration (Replace with your own Firebase project credentials)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        // Load images from localStorage on page load
-        document.addEventListener("DOMContentLoaded", loadSavedPhotos);
+        // 🔥 Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
+        const db = firebase.firestore();
 
-        function addPhoto() {
+        // 📤 Upload Image to Firebase Storage
+        function uploadPhoto() {
             const fileInput = document.getElementById('fileInput');
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    savePhoto(e.target.result); // Save to localStorage
-                    displayPhoto(e.target.result); // Display the photo
-                }
-                reader.readAsDataURL(fileInput.files[0]);
-            }
+            if (fileInput.files.length === 0) return alert("Please select a file!");
+
+            const file = fileInput.files[0];
+            const storageRef = storage.ref('images/' + file.name);
+
+            storageRef.put(file).then(snapshot => {
+                return snapshot.ref.getDownloadURL();
+            }).then(url => {
+                savePhotoURL(url);
+                displayPhoto(url);
+            }).catch(error => {
+                console.error("Upload failed:", error);
+            });
         }
 
-        function displayPhoto(imageSrc) {
+        // 📌 Save Image URL in Firestore
+        function savePhotoURL(url) {
+            db.collection("gallery").add({ imageUrl: url });
+        }
+
+        // 🖼️ Display Image in Gallery
+        function displayPhoto(url) {
             const gallery = document.getElementById('gallery');
             const container = document.createElement('div');
             container.classList.add('photo-container');
-            
+
             const img = document.createElement('img');
-            img.src = imageSrc;
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            
-            container.appendChild(checkbox);
+            img.src = url;
+
             container.appendChild(img);
             gallery.appendChild(container);
         }
 
-        function savePhoto(imageSrc) {
-            let savedPhotos = JSON.parse(localStorage.getItem("photos")) || [];
-            savedPhotos.push(imageSrc);
-            localStorage.setItem("photos", JSON.stringify(savedPhotos));
-        }
-
-        function loadSavedPhotos() {
-            let savedPhotos = JSON.parse(localStorage.getItem("photos")) || [];
-            savedPhotos.forEach(photo => displayPhoto(photo));
-        }
-
-        function toggleDeleteMode() {
-            deleteMode = !deleteMode;
-            const checkboxes = document.querySelectorAll('.photo-container input[type="checkbox"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.style.display = deleteMode ? 'block' : 'none';
-            });
-            document.getElementById('deleteButton').style.display = deleteMode ? 'inline-block' : 'none';
-            document.getElementById('deleteToggle').textContent = deleteMode ? 'Disable Delete Mode' : 'Enable Delete Mode';
-        }
-
-        function deleteSelectedPhotos() {
-            const gallery = document.getElementById('gallery');
-            const selectedPhotos = document.querySelectorAll('.photo-container input[type="checkbox"]:checked');
-            
-            if (selectedPhotos.length === 0) {
-                alert("No photos selected for deletion.");
-                return;
-            }
-
-            if (confirm("Are you sure you want to delete the selected photos?")) {
-                let savedPhotos = JSON.parse(localStorage.getItem("photos")) || [];
-                
-                selectedPhotos.forEach(checkbox => {
-                    const photoSrc = checkbox.nextSibling.src;
-                    savedPhotos = savedPhotos.filter(photo => photo !== photoSrc);
-                    gallery.removeChild(checkbox.parentElement);
+        // 🔄 Load All Images from Firestore When Page Loads
+        function loadGallery() {
+            db.collection("gallery").get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    displayPhoto(doc.data().imageUrl);
                 });
-
-                localStorage.setItem("photos", JSON.stringify(savedPhotos));
-            }
+            }).catch(error => {
+                console.error("Error loading images:", error);
+            });
         }
+
+        document.addEventListener("DOMContentLoaded", loadGallery);
     </script>
 </body>
 </html>
